@@ -20,19 +20,19 @@ Databaza:
 my1application
 ```
 
-Konfigurimi te `src/main/resources/application.properties`:
+Konfigurimi te `src/main/resources/application.properties` merr vlerat nga environment variables:
 
 ```properties
-spring.datasource.url=jdbc:mysql://host.docker.internal:3306/my1application
-spring.datasource.username=springstudent
-spring.datasource.password=springstudent
+spring.datasource.url=${SPRING_DATASOURCE_URL}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 spring.jpa.hibernate.ddl-auto=update
 ```
 
-Nese e nis jashte Docker-it dhe nuk punon, perdor `localhost`:
+Krijo nje file `.env` lokal nga `.env.example` dhe vendos kredencialet aty. File `.env` nuk behet push ne GitHub.
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/my1application
+```bash
+cp .env.example .env
 ```
 
 ## Build
@@ -61,10 +61,20 @@ Build image:
 docker build -t bank-backend .
 ```
 
-Run:
+Run me Docker Compose:
 
 ```bash
-docker run -p 8080:8080 bank-backend
+docker compose up --build
+```
+
+Run vetem backend-in me Docker:
+
+```bash
+docker run -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/my1application \
+  -e SPRING_DATASOURCE_USERNAME=<username> \
+  -e SPRING_DATASOURCE_PASSWORD=<password> \
+  bank-backend
 ```
 
 Nese porta 8080 eshte e zene:
