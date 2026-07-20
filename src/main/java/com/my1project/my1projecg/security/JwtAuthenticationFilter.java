@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.ExpiredJwtException;
 
 import java.io.IOException;
 
@@ -23,6 +24,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+
+        return path.equals("/api/auth/login")
+                || path.equals("/api/users/register");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -41,7 +50,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Nxjerrim token-in (heqim "Bearer " që janë 7 karaktere)
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (ExpiredJwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write(
+                    "{\"message\":\"Token-i ka skaduar. Bëni login përsëri.\"}"
+            );
+            return;
+        }
 
         // 3. Nëse kemi username dhe përdoruesi nuk është ende i autentikuar në sistem
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
