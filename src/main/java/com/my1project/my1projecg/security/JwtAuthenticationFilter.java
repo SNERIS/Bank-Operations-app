@@ -2,6 +2,7 @@ package com.my1project.my1projecg.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import io.jsonwebtoken.ExpiredJwtException;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,48 +40,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
-
-        // 1. Kontrollojmë nëse ka një Header Authorization që fillon me "Bearer "
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // 2. Nxjerrim token-in (heqim "Bearer " që janë 7 karaktere)
-        jwt = authHeader.substring(7);
-        try {
-            username = jwtService.extractUsername(jwt);
-        } catch (ExpiredJwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"message\":\"Token-i ka skaduar. Bëni login përsëri.\"}"
-            );
-            return;
-        }
-
-        // 3. Nëse kemi username dhe përdoruesi nuk është ende i autentikuar në sistem
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            // 4. Verifikojmë nëse token-i është i vlefshëm
-            if (jwtService.isTokenValid(jwt, userDetails.getUsername())) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // 5. E vendosim përdoruesin në "SecurityContext" - kjo e bën atë "të loguar"
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
-
-        // Vazhdojmë te filtri tjetër ose te Controller-i
-        filterChain.doFilter(request, response);
     }
+
+
+    private String extractJwt(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        return Arrays.stream(cookies)
+                .filter(cookie -> "jwt".equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
+
+    }
+
 }
